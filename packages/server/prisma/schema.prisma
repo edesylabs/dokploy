@@ -1,0 +1,204 @@
+// Cloud provider configuration
+model CloudProvider {
+  id            String   @id @default(cuid())
+  name          String
+  type          String   // aws, gcp, azure, digitalocean, linode
+  credentials   String   @db.Text // JSON string with credentials
+  defaultRegion String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Default settings
+  defaultInstanceType String?
+  defaultTags         String? @db.Text // JSON string with tags
+
+  // Relations
+  serverResources ServerResource[]
+  clusters        KubernetesCluster[]
+
+  // Organization relation (if you have organizations)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+}
+
+// Server resource (VM instance)
+model ServerResource {
+  id               String    @id @default(cuid())
+  name             String
+  externalId       String    // ID in the cloud provider
+  cloudProviderId  String
+  cloudProvider    CloudProvider @relation(fields: [cloudProviderId], references: [id])
+  provider         String    // aws, gcp, azure, digitalocean, linode
+  region           String
+  instanceType     String
+  publicIp         String?
+  privateIp        String?
+  status           String    // provisioning, running, stopped, terminated, error
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  lastActiveAt     DateTime  @default(now())
+  terminatedAt     DateTime?
+  
+  // Auto-delete configuration
+  autoDeleteEnabled    Boolean @default(false)
+  idleThresholdMinutes Int?
+  maxLifetimeMinutes   Int?
+  
+  // Cost tracking
+  hourlyRate      Float
+  currentBilling  Float    @default(0)
+  
+  // Tags as JSON string
+  tags            String?  @db.Text
+  
+  // Relations
+  kubernetesNodeId String?
+  kubernetesNode   KubernetesNode? @relation(fields: [kubernetesNodeId], references: [id])
+  
+  // Organization relation (if you have organizations)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  @@index([cloudProviderId])
+  @@index([kubernetesNodeId])
+  @@index([organizationId])
+  @@index([externalId])
+}
+
+// Kubernetes cluster
+model KubernetesCluster {
+  id               String   @id @default(cuid())
+  name             String
+  provider         String   // aws, gcp, azure, digitalocean, linode, hetzner
+  kubeconfig       String?  @db.Text
+  status           String   @default("provisioning") // provisioning, running, error
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  // Relations
+  cloudProviderId  String
+  cloudProvider    CloudProvider @relation(fields: [cloudProviderId], references: [id])
+  
+  // Nodes in the cluster
+  nodes            KubernetesNode[]
+  
+  // Organization relation
+  organizationId   String?
+  organization     Organization? @relation(fields: [organizationId], references: [id])
+
+  @@index([cloudProviderId])
+  @@index([organizationId])
+}
+
+// Kubernetes node
+model KubernetesNode {
+  id               String   @id @default(cuid())
+  name             String
+  role             String   // master, worker
+  status           String   @default("provisioning") // provisioning, running, error
+  joinToken        String?  // Token used for joining the cluster
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  // Relations
+  clusterId        String
+  cluster          KubernetesCluster @relation(fields: [clusterId], references: [id])
+  
+  // Server resource that hosts this node
+  serverResourceId String   @unique
+  serverResource   ServerResource @relation(fields: [serverResourceId], references: [id])
+  
+  // Organization relation
+  organizationId   String?
+  organization     Organization? @relation(fields: [organizationId], references: [id])
+
+  @@index([clusterId])
+  @@index([organizationId])
+}
+
+// Secret store configuration
+model SecretStore {
+  id            String   @id @default(cuid())
+  name          String
+  provider      String   // vault, aws-secrets-manager, azure-key-vault, gcp-secret-manager
+  credentials   String   @db.Text // JSON string with credentials
+  defaultPath   String?
+  description   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  secretReferences SecretReference[]
+  
+  // Organization relation
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+}
+
+// Secret reference for use in Kubernetes
+model SecretReference {
+  id            String   @id @default(cuid())
+  path          String
+  key           String
+  version       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  secretStoreId String
+  secretStore   SecretStore @relation(fields: [secretStoreId], references: [id])
+  
+  kubernetesSecretId String
+  kubernetesSecret   KubernetesSecret @relation(fields: [kubernetesSecretId], references: [id])
+  
+  // Organization relation
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  @@index([secretStoreId])
+  @@index([kubernetesSecretId])
+  @@index([organizationId])
+}
+
+// Kubernetes secret
+model KubernetesSecret {
+  id            String   @id @default(cuid())
+  name          String
+  namespace     String   @default("default")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relations
+  secretReferences SecretReference[]
+  
+  clusterId     String?
+  cluster       KubernetesCluster? @relation(fields: [clusterId], references: [id])
+  
+  // Organization relation
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  @@index([clusterId])
+  @@index([organizationId])
+}
+
+// Organization model
+model Organization {
+  id               String   @id @default(cuid())
+  name             String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  // Relations
+  cloudProviders   CloudProvider[]
+  serverResources  ServerResource[]
+  kubernetesClusters KubernetesCluster[]
+  kubernetesNodes  KubernetesNode[]
+  secretStores     SecretStore[]
+  secretReferences SecretReference[]
+  kubernetesSecrets KubernetesSecret[]
+} 

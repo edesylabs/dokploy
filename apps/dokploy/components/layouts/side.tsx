@@ -181,6 +181,15 @@ const MENU: Menu = {
 		},
 		{
 			isSingle: true,
+			title: "Kubernetes",
+			url: "/dashboard/kubernetes",
+			icon: Boxes,
+			// Only enabled for admins and users with access to Docker in non-cloud environments
+			isEnabled: ({ auth, isCloud }) =>
+				!!((auth?.role === "owner" || auth?.canAccessToDocker) && !isCloud),
+		},
+		{
+			isSingle: true,
 			title: "Swarm",
 			url: "/dashboard/swarm",
 			icon: PieChart,

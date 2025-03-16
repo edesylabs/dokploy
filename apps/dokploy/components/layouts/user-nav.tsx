@@ -120,7 +120,18 @@ export const UserNav = () => {
 									Docker
 								</DropdownMenuItem>
 							)}
-
+							{(data?.role === "owner" || data?.canAccessToDocker) && (
+								<DropdownMenuItem
+									className="cursor-pointer"
+									onClick={() => {
+										router.push("/dashboard/kubernetes", undefined, {
+											shallow: true,
+										});
+									}}
+								>
+									Kubernetes
+								</DropdownMenuItem>
+							)}
 							{data?.role === "owner" && (
 								<DropdownMenuItem
 									className="cursor-pointer"

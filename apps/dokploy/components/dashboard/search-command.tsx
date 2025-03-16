@@ -163,6 +163,14 @@ export const SearchCommand = () => {
 								</CommandItem>
 								<CommandItem
 									onSelect={() => {
+										router.push("/dashboard/kubernetes");
+										setOpen(false);
+									}}
+								>
+									Kubernetes
+								</CommandItem>
+								<CommandItem
+									onSelect={() => {
 										router.push("/dashboard/requests");
 										setOpen(false);
 									}}

@@ -1,0 +1,77 @@
+export const kubernetes_clusters = pgTable("kubernetes_clusters", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  kubeconfig: text("kubeconfig"),
+  context: text("context"),
+  server: text("server"),
+  token: text("token"),
+  certificateAuthority: text("certificate_authority"),
+  insecureSkipTlsVerify: boolean("insecure_skip_tls_verify").default(false),
+  status: text("status").notNull().default("connected"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const kubernetes_deployments = pgTable("kubernetes_deployments", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  namespace: text("namespace").notNull().default("default"),
+  clusterId: text("cluster_id").notNull().references(() => kubernetes_clusters.id, { onDelete: "cascade" }),
+  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  replicas: integer("replicas").notNull().default(1),
+  image: text("image").notNull(),
+  ports: jsonb("ports").notNull().default([]),
+  env: jsonb("env").notNull().default([]),
+  resources: jsonb("resources"),
+  volumes: jsonb("volumes"),
+  status: text("status").notNull().default("pending"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const kubernetes_services = pgTable("kubernetes_services", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  namespace: text("namespace").notNull().default("default"),
+  clusterId: text("cluster_id").notNull().references(() => kubernetes_clusters.id, { onDelete: "cascade" }),
+  deploymentId: text("deployment_id").notNull().references(() => kubernetes_deployments.id, { onDelete: "cascade" }),
+  type: text("type").notNull().default("ClusterIP"),
+  ports: jsonb("ports").notNull().default([]),
+  status: text("status").notNull().default("pending"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const kubernetes_autoscalers = pgTable("kubernetes_autoscalers", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  namespace: text("namespace").notNull().default("default"),
+  clusterId: text("cluster_id").notNull().references(() => kubernetes_clusters.id, { onDelete: "cascade" }),
+  deploymentId: text("deployment_id").notNull().references(() => kubernetes_deployments.id, { onDelete: "cascade" }),
+  minReplicas: integer("min_replicas").notNull().default(1),
+  maxReplicas: integer("max_replicas").notNull().default(10),
+  targetCPUUtilizationPercentage: integer("target_cpu_utilization_percentage"),
+  targetMemoryUtilizationPercentage: integer("target_memory_utilization_percentage"),
+  customMetrics: jsonb("custom_metrics"),
+  status: text("status").notNull().default("pending"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const kubernetes_vertical_autoscalers = pgTable("kubernetes_vertical_autoscalers", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  namespace: text("namespace").notNull().default("default"),
+  clusterId: text("cluster_id").notNull().references(() => kubernetes_clusters.id, { onDelete: "cascade" }),
+  deploymentId: text("deployment_id").notNull().references(() => kubernetes_deployments.id, { onDelete: "cascade" }),
+  updateMode: text("update_mode").notNull().default("Auto"),
+  minAllowedCpu: text("min_allowed_cpu"),
+  minAllowedMemory: text("min_allowed_memory"),
+  maxAllowedCpu: text("max_allowed_cpu"),
+  maxAllowedMemory: text("max_allowed_memory"),
+  controlledResources: jsonb("controlled_resources").default(["cpu", "memory"]),
+  status: text("status").notNull().default("pending"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}); 
